@@ -29,10 +29,13 @@ jobs:
         run: yes | sdkmanager --licenses || true
 
       - name: Build APK
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+        - name: Setup Gradle
+  uses: gradle/actions/setup-gradle@v6
+  with:
+    gradle-version: '8.10'
 
+- name: Build APK
+  run: gradle assembleDebug --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
