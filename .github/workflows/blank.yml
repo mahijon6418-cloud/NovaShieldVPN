@@ -20,10 +20,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # This action provisions Android command-line tools and adds sdkmanager to PATH.
-      # Do not add a packages input; legacy Android components are excluded.
-      - name: Set up Android SDK command-line tools
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
 
       - name: Accept Android SDK licenses and install build packages
         run: |
