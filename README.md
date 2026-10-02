@@ -1,6 +1,17 @@
 # NovaShield VPN
 Standalone Android VPN client shell with a different name/UI, built without Avast proprietary code.
 
+## Build
+
+The repository is a standard Android Gradle project. Build a debug APK with Gradle
+8.10.2, JDK 17, and the Android 35 SDK installed:
+
+```bash
+gradle assembleDebug --stacktrace
+```
+
+The generated APK is at `app/build/outputs/apk/debug/app-debug.apk`.
+
 ## Access code
 The default code is embedded for the requested prototype and can also be changed from **ENTER ACCESS CODE**.
 
