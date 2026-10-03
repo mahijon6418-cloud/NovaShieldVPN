@@ -32,6 +32,7 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         status = findViewById(R.id.status)
+        findViewById<android.view.View>(R.id.root).setBackgroundColor(0xFFF5F7FB.toInt())
         configInfo = findViewById(R.id.config_info)
         dnsInfo = findViewById(R.id.dns_info)
         connect = findViewById(R.id.connect)
@@ -49,7 +50,7 @@ class MainActivity : Activity() {
     private fun importFromClipboard() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (!clipboard.hasPrimaryClip()) {
-            Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "کلیپ‌بورد خالی است", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -59,7 +60,7 @@ class MainActivity : Activity() {
         }
         val text = clip.getItemAt(0).coerceToText(this).toString().trim()
         if (text.isEmpty()) {
-            Toast.makeText(this, "Clipboard does not contain a configuration", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "کلیپ‌بورد شامل کانفیگ نیست", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -72,18 +73,18 @@ class MainActivity : Activity() {
                     .apply()
 
                 runOnUiThread {
-                    status.text = "Configuration imported"
+                    status.text = "کانفیگ با موفقیت وارد شد"
                     status.setTextColor(0xff18864b.toInt())
                     render()
-                    Toast.makeText(this, "Configuration imported from clipboard", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "کانفیگ از کلیپ‌بورد وارد شد", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "Invalid configuration"
+                    status.text = "کانفیگ نامعتبر است"
                     status.setTextColor(0xffc0392b.toInt())
                     Toast.makeText(
                         this,
-                        e.message ?: "Clipboard configuration is invalid",
+                        e.message ?: "کانفیگ کلیپ‌بورد نامعتبر است",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -121,7 +122,7 @@ class MainActivity : Activity() {
                     status.text = "Configuration imported"
                     status.setTextColor(0xff18864b.toInt())
                     render()
-                    Toast.makeText(this, "AmneziaWG configuration imported", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "کانفیگ با موفقیت وارد شد", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -129,7 +130,7 @@ class MainActivity : Activity() {
                     status.setTextColor(0xffc0392b.toInt())
                     Toast.makeText(
                         this,
-                        e.message ?: "Configuration import failed",
+                        e.message ?: "وارد کردن کانفیگ ناموفق بود",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -140,7 +141,7 @@ class MainActivity : Activity() {
     private fun connect() {
         val config = savedConfig()
         if (config == null) {
-            status.text = "Import a configuration first"
+            status.text = "ابتدا کانفیگ را وارد کنید"
             status.setTextColor(0xffb54708.toInt())
             return
         }
@@ -155,22 +156,23 @@ class MainActivity : Activity() {
     }
 
     private fun startTunnel(config: String) {
-        status.text = "Connecting…"
+        status.text = "در حال اتصال…"
         status.setTextColor(0xff315cff.toInt())
-        connect.text = "DISCONNECT"
+        connect.text = "قطع اتصال"
 
         executor.execute {
             try {
                 backend.connect(config)
                 runOnUiThread {
-                    status.text = "Connected"
-                    status.setTextColor(0xff18864b.toInt())
+                    status.text = "متصل شد"
+                    status.setTextColor(0xffffffff.toInt())
+                    findViewById<android.view.View>(R.id.root).setBackgroundColor(0xff18864b.toInt())
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "Connection failed"
+                    status.text = "اتصال ناموفق بود"
                     status.setTextColor(0xffc0392b.toInt())
-                    connect.text = "CONNECT"
+                    connect.text = "اتصال"
                     Toast.makeText(
                         this,
                         e.message ?: "AmneziaWG connection failed",
@@ -182,18 +184,19 @@ class MainActivity : Activity() {
     }
 
     private fun disconnect() {
-        status.text = "Disconnecting…"
+        status.text = "در حال قطع اتصال…"
         executor.execute {
             try {
                 backend.disconnect()
                 runOnUiThread {
-                    status.text = "Disconnected"
+                    status.text = "قطع شد"
                     status.setTextColor(0xff667085.toInt())
+                    findViewById<android.view.View>(R.id.root).setBackgroundColor(0xffF5F7FB.toInt())
                     connect.text = "CONNECT"
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "Disconnect failed"
+                    status.text = "قطع اتصال ناموفق بود"
                     status.setTextColor(0xffc0392b.toInt())
                 }
             }
@@ -231,14 +234,14 @@ class MainActivity : Activity() {
                             .edit()
                             .putString(configKey, updated)
                             .apply()
-                        status.text = "DNS updated"
+                        status.text = "DNS تغییر کرد"
                         status.setTextColor(0xff18864b.toInt())
                     }
                     render()
                 } catch (e: Exception) {
                     Toast.makeText(
                         this,
-                        e.message ?: "Invalid DNS",
+                        e.message ?: "DNS نامعتبر است",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -257,9 +260,9 @@ class MainActivity : Activity() {
             ?: "1.1.1.1, 8.8.8.8"
 
         configInfo.text = if (config == null) {
-            "No configuration imported"
+            "هیچ کانفیگی وارد نشده است"
         } else {
-            "Imported • " + AmneziaWgBackend.detectVersion(config)
+            "کانفیگ وارد شده"
         }
 
         dnsInfo.text = "DNS: $dns"
