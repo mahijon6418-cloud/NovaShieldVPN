@@ -24,6 +24,8 @@ class MainActivity : Activity() {
     private lateinit var configInfo: TextView
     private lateinit var dnsInfo: TextView
     private lateinit var connect: Button
+    private lateinit var title: TextView
+    private lateinit var subtitle: TextView
 
     private val backend by lazy { AmneziaWgBackend(this) }
 
@@ -33,6 +35,8 @@ class MainActivity : Activity() {
 
         status = findViewById(R.id.status)
         findViewById<android.view.View>(R.id.root).setBackgroundColor(0xFFF5F7FB.toInt())
+        title = findViewById(R.id.title)
+        subtitle = findViewById(R.id.subtitle)
         configInfo = findViewById(R.id.config_info)
         dnsInfo = findViewById(R.id.dns_info)
         connect = findViewById(R.id.connect)
@@ -119,14 +123,14 @@ class MainActivity : Activity() {
                     .apply()
 
                 runOnUiThread {
-                    status.text = "Configuration imported"
+                    status.text = "کانفیگ با موفقیت وارد شد"
                     status.setTextColor(0xff18864b.toInt())
                     render()
                     Toast.makeText(this, "کانفیگ با موفقیت وارد شد", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "Invalid configuration"
+                    status.text = "کانفیگ نامعتبر است"
                     status.setTextColor(0xffc0392b.toInt())
                     Toast.makeText(
                         this,
@@ -166,6 +170,10 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     status.text = "متصل شد"
                     status.setTextColor(0xffffffff.toInt())
+                    title.setTextColor(0xffffffff.toInt())
+                    subtitle.setTextColor(0xffffffff.toInt())
+                    configInfo.setTextColor(0xffffffff.toInt())
+                    dnsInfo.setTextColor(0xffffffff.toInt())
                     findViewById<android.view.View>(R.id.root).setBackgroundColor(0xff18864b.toInt())
                 }
             } catch (e: Exception) {
@@ -175,7 +183,7 @@ class MainActivity : Activity() {
                     connect.text = "اتصال"
                     Toast.makeText(
                         this,
-                        e.message ?: "AmneziaWG connection failed",
+                        e.message ?: "اتصال ناموفق بود",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -191,8 +199,12 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     status.text = "قطع شد"
                     status.setTextColor(0xff667085.toInt())
+                    title.setTextColor(0xff15213A.toInt())
+                    subtitle.setTextColor(0xff667085.toInt())
+                    configInfo.setTextColor(0xff15213A.toInt())
+                    dnsInfo.setTextColor(0xff15213A.toInt())
                     findViewById<android.view.View>(R.id.root).setBackgroundColor(0xffF5F7FB.toInt())
-                    connect.text = "CONNECT"
+                    connect.text = "اتصال"
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -215,10 +227,10 @@ class MainActivity : Activity() {
         }
 
         AlertDialog.Builder(this)
-            .setTitle("DNS servers")
-            .setMessage("Enter one or more DNS IP addresses separated by commas.")
+            .setTitle("سرورهای DNS")
+            .setMessage("یک یا چند نشانی IP برای DNS را با ویرگول وارد کنید.")
             .setView(input)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton("ذخیره") { _, _ ->
                 val dns = input.text.toString().trim()
                 try {
                     backend.validateDns(dns)
@@ -246,7 +258,7 @@ class MainActivity : Activity() {
                     ).show()
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("لغو", null)
             .show()
     }
 
