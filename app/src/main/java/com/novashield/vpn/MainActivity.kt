@@ -2,6 +2,9 @@ package com.novashield.vpn
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
@@ -34,12 +37,58 @@ class MainActivity : Activity() {
         connect = findViewById(R.id.connect)
 
         findViewById<Button>(R.id.import_config).setOnClickListener { importConfig() }
+        findViewById<Button>(R.id.import_clipboard).setOnClickListener { importFromClipboard() }
         findViewById<Button>(R.id.change_dns).setOnClickListener { changeDns() }
         connect.setOnClickListener {
             if (backend.isConnected()) disconnect() else connect()
         }
 
         render()
+    }
+
+    private fun importFromClipboard() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        if (!clipboard.hasPrimaryClip()) {
+            Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val clip = clipboard.primaryClip ?: run {
+            Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = clip.getItemAt(0).coerceToText(this).toString().trim()
+        if (text.isEmpty()) {
+            Toast.makeText(this, "Clipboard does not contain a configuration", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        executor.execute {
+            try {
+                backend.validate(text)
+                getSharedPreferences(prefsName, 0)
+                    .edit()
+                    .putString(configKey, text)
+                    .apply()
+
+                runOnUiThread {
+                    status.text = "Configuration imported"
+                    status.setTextColor(0xff18864b.toInt())
+                    render()
+                    Toast.makeText(this, "Configuration imported from clipboard", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "Invalid configuration"
+                    status.setTextColor(0xffc0392b.toInt())
+                    Toast.makeText(
+                        this,
+                        e.message ?: "Clipboard configuration is invalid",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
 
     private fun importConfig() {
