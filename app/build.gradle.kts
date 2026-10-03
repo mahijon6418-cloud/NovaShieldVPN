@@ -11,8 +11,8 @@ android {
         applicationId = "com.novashield.vpn"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     compileOptions {
@@ -23,4 +23,8 @@ android {
 
 kotlin {
     jvmToolchain(17)
+}
+
+dependencies {
+    implementation("com.zaneschepke:amneziawg-android:2.3.7")
 }
