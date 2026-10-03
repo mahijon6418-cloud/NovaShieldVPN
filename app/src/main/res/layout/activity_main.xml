@@ -15,6 +15,8 @@
             android:textColor="#15213A" android:textSize="15sp"/>
         <Button android:id="@+id/import_config" android:layout_width="match_parent" android:layout_height="58dp"
             android:layout_marginTop="18dp" android:text="IMPORT CONFIG (.conf)" android:textSize="16sp"/>
+        <Button android:id="@+id/import_clipboard" android:layout_width="match_parent" android:layout_height="54dp"
+            android:layout_marginTop="10dp" android:text="IMPORT FROM CLIPBOARD"/>
         <TextView android:id="@+id/dns_info" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:gravity="center" android:text="DNS: 1.1.1.1, 8.8.8.8"
             android:textColor="#15213A" android:textSize="15sp"/>
