@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.novashield.vpn"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.novashield.vpn"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 3
         versionName = "1.2.0"
     }
