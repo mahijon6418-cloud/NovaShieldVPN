@@ -3,13 +3,14 @@ package com.novashield.vpn
 import android.content.Context
 import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.Tunnel
+import org.amnezia.awg.backend.TunnelActionHandler
 import org.amnezia.awg.config.Config
 import java.io.ByteArrayInputStream
-import java.lang.reflect.Proxy
 import java.net.InetAddress
+import java.util.Collection
 
 class AmneziaWgBackend(context: Context) {
-    private val backend: GoBackend = createBackend(context.applicationContext)
+    private val backend: GoBackend = GoBackend(context.applicationContext, NoopTunnelActionHandler)
     private var tunnel: Tunnel? = null
 
     fun validate(configText: String) {
@@ -41,39 +42,19 @@ class AmneziaWgBackend(context: Context) {
     fun isConnected(): Boolean =
         tunnel?.let { backend.getState(it) == Tunnel.State.UP } == true
 
-    private fun createTunnel(): Tunnel {
-        return Proxy.newProxyInstance(
-            Tunnel::class.java.classLoader,
-            arrayOf(Tunnel::class.java)
-        ) { _, method, args ->
-            when (method.name) {
-                "getName" -> "nova-awg"
-                "onStateChange" -> Unit
-                "toString" -> "nova-awg"
-                "hashCode" -> System.identityHashCode(this)
-                "equals" -> args?.firstOrNull() === this
-                else -> null
-            }
-        } as Tunnel
+    private fun createTunnel(): Tunnel = object : Tunnel {
+        override fun getName(): String = "nova-awg"
+        override fun onStateChange(newState: Tunnel.State) {}
+        override fun isIpv4ResolutionPreferred(): Boolean = true
+        override fun isMetered(): Boolean = false
     }
 
     companion object {
-        private fun createBackend(context: Context): GoBackend {
-            val constructors = GoBackend::class.java.constructors
-                .sortedBy { it.parameterTypes.size }
-            val constructor = constructors.firstOrNull()
-                ?: error("No GoBackend constructor found")
-            val args = constructor.parameterTypes.mapIndexed { index, type ->
-                when {
-                    index == 0 && Context::class.java.isAssignableFrom(type) -> context
-                    type == Boolean::class.javaPrimitiveType -> false
-                    type == Int::class.javaPrimitiveType -> 0
-                    type == Long::class.javaPrimitiveType -> 0L
-                    type.isEnum -> type.enumConstants?.firstOrNull()
-                    else -> null
-                }
-            }.toTypedArray()
-            return constructor.newInstance(*args) as GoBackend
+        private val NoopTunnelActionHandler = object : TunnelActionHandler {
+            override fun runPreUp(scripts: Collection<String>) {}
+            override fun runPostUp(scripts: Collection<String>) {}
+            override fun runPreDown(scripts: Collection<String>) {}
+            override fun runPostDown(scripts: Collection<String>) {}
         }
 
         fun detectVersion(config: String): String = when {
