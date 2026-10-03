@@ -10,7 +10,7 @@ import java.lang.reflect.Proxy
 import java.net.InetAddress
 
 class AmneziaWgBackend(context: Context) {
-    private val backend: GoBackend = createBackend(context.applicationContext)
+    private val backend: GoBackend by lazy { createBackend(context.applicationContext) }
     private var tunnel: Tunnel? = null
 
     fun validate(configText: String) {
@@ -63,7 +63,7 @@ class AmneziaWgBackend(context: Context) {
     companion object {
         private fun createBackend(context: Context): GoBackend {
             val handler = Proxy.newProxyInstance(
-                ClassLoader.getSystemClassLoader(),
+                TunnelActionHandler::class.java.classLoader,
                 arrayOf(TunnelActionHandler::class.java)
             ) { _, method, _ ->
                 if (method.returnType == Void.TYPE) Unit else defaultValue(method.returnType)
