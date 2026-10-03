@@ -2,6 +2,7 @@ package com.novashield.vpn
 
 import android.content.Context
 import org.amnezia.awg.backend.GoBackend
+import org.amnezia.awg.backend.TunnelActionHandler
 import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.config.Config
 import java.io.ByteArrayInputStream
@@ -63,14 +64,14 @@ class AmneziaWgBackend(context: Context) {
         private fun createBackend(context: Context): GoBackend {
             val handler = Proxy.newProxyInstance(
                 ClassLoader.getSystemClassLoader(),
-                arrayOf(Class.forName("org.amnezia.awg.backend.TunnelActionHandler"))
+                arrayOf(TunnelActionHandler::class.java)
             ) { _, method, _ ->
                 if (method.returnType == Void.TYPE) Unit else defaultValue(method.returnType)
             }
 
             val constructor = GoBackend::class.java.getConstructor(
                 Context::class.java,
-                Class.forName("org.amnezia.awg.backend.TunnelActionHandler")
+                TunnelActionHandler::class.java
             )
             return constructor.newInstance(context, handler) as GoBackend
         }
