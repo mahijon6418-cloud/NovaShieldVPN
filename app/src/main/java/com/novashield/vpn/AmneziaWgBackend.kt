@@ -3,14 +3,13 @@ package com.novashield.vpn
 import android.content.Context
 import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.Tunnel
-import org.amnezia.awg.backend.TunnelActionHandler
 import org.amnezia.awg.config.Config
 import java.io.ByteArrayInputStream
+import java.lang.reflect.Proxy
 import java.net.InetAddress
-import java.util.Collection
 
 class AmneziaWgBackend(context: Context) {
-    private val backend: GoBackend = GoBackend(context.applicationContext, NoopTunnelActionHandler)
+    private val backend: GoBackend = createBackend(context.applicationContext)
     private var tunnel: Tunnel? = null
 
     fun validate(configText: String) {
@@ -42,19 +41,51 @@ class AmneziaWgBackend(context: Context) {
     fun isConnected(): Boolean =
         tunnel?.let { backend.getState(it) == Tunnel.State.UP } == true
 
-    private fun createTunnel(): Tunnel = object : Tunnel {
-        override fun getName(): String = "nova-awg"
-        override fun onStateChange(newState: Tunnel.State) {}
-        override fun isIpv4ResolutionPreferred(): Boolean = true
-        override fun isMetered(): Boolean = false
+    private fun createTunnel(): Tunnel {
+        return Proxy.newProxyInstance(
+            Tunnel::class.java.classLoader,
+            arrayOf(Tunnel::class.java)
+        ) { proxy, method, args ->
+            when (method.name) {
+                "getName" -> "nova-awg"
+                "onStateChange" -> Unit
+                "isIpv4ResolutionPreferred" -> true
+                "isMetered" -> false
+                "toString" -> "nova-awg"
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> args?.firstOrNull() === proxy
+                else -> defaultValue(method.returnType)
+            }
+        } as Tunnel
     }
 
     companion object {
-        private val NoopTunnelActionHandler = object : TunnelActionHandler {
-            override fun runPreUp(scripts: Collection<String>) {}
-            override fun runPostUp(scripts: Collection<String>) {}
-            override fun runPreDown(scripts: Collection<String>) {}
-            override fun runPostDown(scripts: Collection<String>) {}
+        private fun createBackend(context: Context): GoBackend {
+            val handler = Proxy.newProxyInstance(
+                ClassLoader.getSystemClassLoader(),
+                arrayOf(Class.forName("org.amnezia.awg.backend.TunnelActionHandler"))
+            ) { _, method, _ ->
+                if (method.returnType == Void.TYPE) Unit else defaultValue(method.returnType)
+            }
+
+            val constructor = GoBackend::class.java.getConstructor(
+                Context::class.java,
+                Class.forName("org.amnezia.awg.backend.TunnelActionHandler")
+            )
+            return constructor.newInstance(context, handler) as GoBackend
+        }
+
+        private fun defaultValue(type: Class<*>): Any? = when {
+            type == Boolean::class.javaPrimitiveType -> false
+            type == Byte::class.javaPrimitiveType -> 0.toByte()
+            type == Short::class.javaPrimitiveType -> 0.toShort()
+            type == Int::class.javaPrimitiveType -> 0
+            type == Long::class.javaPrimitiveType -> 0L
+            type == Float::class.javaPrimitiveType -> 0f
+            type == Double::class.javaPrimitiveType -> 0.0
+            type == Char::class.javaPrimitiveType -> '\u0000'
+            type == Void.TYPE -> Unit
+            else -> null
         }
 
         fun detectVersion(config: String): String = when {
