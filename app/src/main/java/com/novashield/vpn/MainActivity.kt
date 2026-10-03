@@ -2,147 +2,228 @@ package com.novashield.vpn
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.Context
+import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
-    private val defaultCode = "L69F4D-GGDYQ2-5XUJSA"
-    private val servers = listOf(
-        ServerInfo("🇩🇪", "Germany", "Frankfurt"),
-        ServerInfo("🇳🇱", "Netherlands", "Amsterdam"),
-        ServerInfo("🇬🇧", "United Kingdom", "London"),
-        ServerInfo("🇫🇷", "France", "Paris"),
-        ServerInfo("🇹🇷", "Türkiye", "Istanbul"),
-        ServerInfo("🇫🇮", "Finland", "Helsinki"),
-        ServerInfo("🇨🇦", "Canada", "Toronto"),
-        ServerInfo("🇯🇵", "Japan", "Tokyo"),
-        ServerInfo("🇦🇺", "Australia", "Sydney"),
-    )
-    private val protocolNames = listOf("WireGuard", "OpenVPN", "Mimic")
-    private val backends = mapOf(
-        "WireGuard" to WireGuardBackend(),
-        "OpenVPN" to OpenVpnBackend(),
-        "Mimic" to MimicBackend(),
-    )
+    private val prefsName = "amneziawg"
+    private val configKey = "config"
+    private val dnsKey = "dns"
 
+    private val executor = Executors.newSingleThreadExecutor()
     private lateinit var status: TextView
-    private lateinit var protocolStatus: TextView
-    private lateinit var serverStatus: TextView
+    private lateinit var configInfo: TextView
+    private lateinit var dnsInfo: TextView
     private lateinit var connect: Button
-    private lateinit var selectedServer: ServerInfo
-    private var selectedProtocol = "WireGuard"
+
+    private val backend by lazy { AmneziaWgBackend(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         status = findViewById(R.id.status)
-        protocolStatus = findViewById(R.id.protocol_status)
-        serverStatus = findViewById(R.id.server_status)
+        configInfo = findViewById(R.id.config_info)
+        dnsInfo = findViewById(R.id.dns_info)
         connect = findViewById(R.id.connect)
-        selectedServer = servers.first()
 
-        val prefs = getSharedPreferences("config", Context.MODE_PRIVATE)
-        if (!prefs.contains("access_code")) {
-            prefs.edit().putString("access_code", defaultCode).apply()
+        findViewById<Button>(R.id.import_config).setOnClickListener { importConfig() }
+        findViewById<Button>(R.id.change_dns).setOnClickListener { changeDns() }
+        connect.setOnClickListener {
+            if (backend.isConnected()) disconnect() else connect()
         }
 
-        setUpProtocolSelector()
-        setUpServerSelector()
-        updateServerStatus()
-        connect.setOnClickListener { connectSelectedBackend() }
-        findViewById<Button>(R.id.code).setOnClickListener { editCode() }
+        render()
     }
 
-    private fun setUpProtocolSelector() {
-        val selector = findViewById<Spinner>(R.id.protocol_selector)
-        selector.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, protocolNames)
-        selector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                selectedProtocol = protocolNames[position]
-                updateProtocolStatus()
-                setDisconnected()
+    private fun importConfig() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(intent, REQUEST_IMPORT)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_IMPORT || resultCode != RESULT_OK) return
+
+        val uri = data?.data ?: return
+        executor.execute {
+            try {
+                val text = contentResolver.openInputStream(uri)?.use {
+                    it.readBytes().toString(Charsets.UTF_8)
+                } ?: throw IllegalStateException("Could not read configuration file")
+
+                backend.validate(text)
+
+                getSharedPreferences(prefsName, 0)
+                    .edit()
+                    .putString(configKey, text)
+                    .apply()
+
+                runOnUiThread {
+                    status.text = "Configuration imported"
+                    status.setTextColor(0xff18864b.toInt())
+                    render()
+                    Toast.makeText(this, "AmneziaWG configuration imported", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "Invalid configuration"
+                    status.setTextColor(0xffc0392b.toInt())
+                    Toast.makeText(
+                        this,
+                        e.message ?: "Configuration import failed",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>) = Unit
         }
     }
 
-    private fun setUpServerSelector() {
-        val selector = findViewById<Spinner>(R.id.server_selector)
-        selector.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            servers.map { "${it.displayName} — ${it.availability.label}" },
-        )
-        selector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                selectedServer = servers[position]
-                updateServerStatus()
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) = Unit
-        }
-    }
-
-    private fun updateServerStatus() {
-        serverStatus.text = "Selected server: ${selectedServer.displayName}\n${selectedServer.availability.label}"
-    }
-
-    private fun updateProtocolStatus() {
-        protocolStatus.text = when (selectedProtocol) {
-            "Mimic" -> "Protocol: Mimic — Requires licensed/official Mimic SDK"
-            else -> "Protocol: $selectedProtocol — Available for an authorized backend"
-        }
-    }
-
-    private fun connectSelectedBackend() {
-        val backend = checkNotNull(backends[selectedProtocol])
-        if (backend.isConnected()) {
-            backend.disconnect()
-            setDisconnected()
+    private fun connect() {
+        val config = savedConfig()
+        if (config == null) {
+            status.text = "Import a configuration first"
+            status.setTextColor(0xffb54708.toInt())
             return
         }
-        backend.connect(selectedServer)
-        val message = when (backend) {
-            is MimicBackend -> "Mimic is not available in this build."
-            is WireGuardBackend -> backend.statusMessage(selectedServer)
-            is OpenVpnBackend -> backend.statusMessage(selectedServer)
-            else -> "No backend is configured."
+
+        val permission = VpnService.prepare(this)
+        if (permission != null) {
+            startActivityForResult(permission, REQUEST_VPN_PERMISSION)
+            return
         }
-        status.text = message
-        status.setTextColor(0xffc0392b.toInt())
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+        startTunnel(config)
     }
 
-    private fun setDisconnected() {
-        status.text = "Disconnected"
-        status.setTextColor(0xffc0392b.toInt())
-        connect.text = "CONNECT"
+    private fun startTunnel(config: String) {
+        status.text = "Connecting…"
+        status.setTextColor(0xff315cff.toInt())
+        connect.text = "DISCONNECT"
+
+        executor.execute {
+            try {
+                backend.connect(config)
+                runOnUiThread {
+                    status.text = "Connected"
+                    status.setTextColor(0xff18864b.toInt())
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "Connection failed"
+                    status.setTextColor(0xffc0392b.toInt())
+                    connect.text = "CONNECT"
+                    Toast.makeText(
+                        this,
+                        e.message ?: "AmneziaWG connection failed",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
 
-    private fun editCode() {
-        val input = EditText(this)
-        input.hint = "Access code"
-        input.setText(getSharedPreferences("config", Context.MODE_PRIVATE).getString("access_code", defaultCode))
+    private fun disconnect() {
+        status.text = "Disconnecting…"
+        executor.execute {
+            try {
+                backend.disconnect()
+                runOnUiThread {
+                    status.text = "Disconnected"
+                    status.setTextColor(0xff667085.toInt())
+                    connect.text = "CONNECT"
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "Disconnect failed"
+                    status.setTextColor(0xffc0392b.toInt())
+                }
+            }
+        }
+    }
+
+    private fun changeDns() {
+        val current = getSharedPreferences(prefsName, 0)
+            .getString(dnsKey, "1.1.1.1, 8.8.8.8")
+            ?: "1.1.1.1, 8.8.8.8"
+
+        val input = EditText(this).apply {
+            hint = "1.1.1.1, 8.8.8.8"
+            setText(current)
+            setSelectAllOnFocus(true)
+        }
+
         AlertDialog.Builder(this)
-            .setTitle("Access code")
+            .setTitle("DNS servers")
+            .setMessage("Enter one or more DNS IP addresses separated by commas.")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
-                getSharedPreferences("config", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("access_code", input.text.toString().trim())
-                    .apply()
+                val dns = input.text.toString().trim()
+                try {
+                    backend.validateDns(dns)
+                    getSharedPreferences(prefsName, 0)
+                        .edit()
+                        .putString(dnsKey, dns)
+                        .apply()
+
+                    val config = savedConfig()
+                    if (config != null) {
+                        val updated = ConfigEditor.withDns(config, dns)
+                        getSharedPreferences(prefsName, 0)
+                            .edit()
+                            .putString(configKey, updated)
+                            .apply()
+                        status.text = "DNS updated"
+                        status.setTextColor(0xff18864b.toInt())
+                    }
+                    render()
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        this,
+                        e.message ?: "Invalid DNS",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun savedConfig(): String? =
+        getSharedPreferences(prefsName, 0).getString(configKey, null)
+
+    private fun render() {
+        val config = savedConfig()
+        val dns = getSharedPreferences(prefsName, 0)
+            .getString(dnsKey, "1.1.1.1, 8.8.8.8")
+            ?: "1.1.1.1, 8.8.8.8"
+
+        configInfo.text = if (config == null) {
+            "No configuration imported"
+        } else {
+            "Imported • " + AmneziaWgBackend.detectVersion(config)
+        }
+
+        dnsInfo.text = "DNS: $dns"
+        connect.isEnabled = config != null
+    }
+
+    override fun onDestroy() {
+        executor.shutdownNow()
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val REQUEST_IMPORT = 10
+        private const val REQUEST_VPN_PERMISSION = 11
     }
 }
