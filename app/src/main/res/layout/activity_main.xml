@@ -1,8 +1,18 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:padding="24dp" android:gravity="center_horizontal" android:background="#F5F7FB" android:layout_width="match_parent" android:layout_height="match_parent">
-<TextView android:text="NovaShield" android:textSize="32sp" android:textStyle="bold" android:textColor="#15213A" android:layout_marginTop="35dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-<TextView android:text="Private connection" android:textSize="15sp" android:textColor="#667085" android:layout_marginTop="6dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-<TextView android:id="@+id/status" android:text="Disconnected" android:textSize="18sp" android:textStyle="bold" android:textColor="#C0392B" android:layout_marginTop="55dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-<Button android:id="@+id/connect" android:text="CONNECT" android:textSize="18sp" android:layout_marginTop="20dp" android:layout_width="220dp" android:layout_height="65dp"/>
-<Button android:id="@+id/code" android:text="ENTER ACCESS CODE" android:layout_marginTop="18dp" android:layout_width="220dp" android:layout_height="55dp"/>
-<TextView android:text="Protocol: Custom VPN backend" android:textSize="13sp" android:textColor="#667085" android:layout_marginTop="30dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:padding="24dp" android:gravity="center_horizontal"
+    android:background="#F5F7FB" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/logo" android:src="@drawable/ic_novashield" android:contentDescription="NovaShield"
+        android:layout_width="96dp" android:layout_height="96dp" android:layout_marginTop="22dp"/>
+    <TextView android:text="NovaShield" android:textSize="32sp" android:textStyle="bold" android:textColor="#15213A"
+        android:layout_marginTop="12dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <TextView android:text="Private connection" android:textSize="15sp" android:textColor="#667085"
+        android:layout_marginTop="6dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <TextView android:id="@+id/status" android:text="Disconnected" android:textSize="18sp" android:textStyle="bold"
+        android:textColor="#C0392B" android:layout_marginTop="42dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Button android:id="@+id/connect" android:text="CONNECT" android:textSize="18sp" android:layout_marginTop="20dp"
+        android:layout_width="220dp" android:layout_height="65dp"/>
+    <Button android:id="@+id/code" android:text="ENTER ACCESS CODE" android:layout_marginTop="18dp"
+        android:layout_width="220dp" android:layout_height="55dp"/>
+    <TextView android:text="Protocol: Custom VPN backend" android:textSize="13sp" android:textColor="#667085"
+        android:layout_marginTop="30dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
 </LinearLayout>
