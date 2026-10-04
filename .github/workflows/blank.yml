@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - codex/fix-github-actions-android-build-failure
   pull_request:
     branches:
       - main
